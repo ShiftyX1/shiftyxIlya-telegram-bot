@@ -8,6 +8,7 @@ load_dotenv(dotenv_path=dotenv_path)
 
 class Settings:
     TOKEN: str = os.getenv("TOKEN")
+    ADMIN_ID: int = os.getenv("ADMIN_ID")
 
     # Данные БД берем из переменных окружения
     DB_USER: str = os.getenv("DB_USER")

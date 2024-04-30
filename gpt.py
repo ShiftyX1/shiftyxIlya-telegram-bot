@@ -1,11 +1,14 @@
-import logging
-import asyncio
-from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher
+
 from bot.handlers.gpt_handlers import gpt_router
+from bot.handlers.admin_handlers import admin_router
 
 from database.database_connection import connect_database
+
 from config.config import settings
+
+import logging
+import asyncio
 
 # Включите логирование
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +18,7 @@ bot = Bot(token=settings.TOKEN)
 dp = Dispatcher()
 
 dp.include_router(gpt_router)
+dp.include_router(admin_router)
 
 # Запуск бота
 async def main():
