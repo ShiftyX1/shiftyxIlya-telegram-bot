@@ -1,15 +1,24 @@
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
+from models.gpt_models import History
+from tortoise.exceptions import DoesNotExist
+
 import g4f
 import g4f.Provider
 import random
+import json
 
 
 gpt_router = Router()
 
-# Словарь для хранения истории разговоров
-conversation_history = {}
+
+
+def history_to_json(history_dict: dict) -> str:
+    """
+    Конвертируем историю сообщений в строку JSON для последующей вставки в PostgreSQL
+    """
+    return json.dumps(history_dict)
 
 # Функция для обрезки истории разговора
 def trim_history(history, max_length=4096):
@@ -23,22 +32,32 @@ def trim_history(history, max_length=4096):
 @gpt_router.business_message(Command('clear'))
 async def process_clear_command(message: Message):
     user_id = message.from_user.id
-    conversation_history[user_id] = []
-    await message.reply("История диалога очищена.")
+    try:
+        history = await History.get(user_id=user_id)
+        history.historyjson = history_to_json([])
+        await history.save()
+        await message.reply("История диалога очищена.")
+    except DoesNotExist:
+        await message.reply("Вы еще не общались с ChatGPT в рамках этого чата. История отсутствует.")
 
-# Обработчик для каждого нового сообщения
+# Обработчик для каждого нового сообщения к GPT
 @gpt_router.business_message()
-async def send_welcome(message: Message):
+async def gpt_response(message: Message):
     user_id = message.from_user.id
     user_input = message.text
 
-    if user_id not in conversation_history:
-        conversation_history[user_id] = []
+    historydb_query = await History.get_or_create(user_id=str(user_id))
 
-    conversation_history[user_id].append({"role": "user", "content": user_input})
-    conversation_history[user_id] = trim_history(conversation_history[user_id])
+    if historydb_query[0].historyjson == None:
+        historydb_query[0].historyjson = history_to_json([])
+        await historydb_query[0].save()
 
-    chat_history = conversation_history[user_id]
+    conversation_history = await History.get(user_id=str(user_id))
+    chat_history = conversation_history.historyjson
+    chat_history.append({"role": "user", "content": user_input})
+    
+    # conversation_history[user_id] = trim_history(conversation_history[user_id])
+    #chat_history = conversation_history[user_id]
 
     providers = [g4f.Provider.Feedough, g4f.Provider.FreeGpt]
 
@@ -53,9 +72,13 @@ async def send_welcome(message: Message):
         print(f"{g4f.Provider.GeekGpt.__name__}:", e)
         chat_gpt_response = "Извините, произошла ошибка."
 
-    conversation_history[user_id].append({"role": "assistant", "content": chat_gpt_response})
-    print(conversation_history)
-    length = sum(len(message["content"]) for message in conversation_history[user_id])
-    print(length)
+    chat_history.append({"role": "assistant", "content": chat_gpt_response})
+    conversation_history.historyjson = json.dumps(chat_history)
+    await conversation_history.save()
+    
+    #print(conversation_history.historyjson.encode(encoding="utf-8"))
+    #length = sum(len(message["content"]) for message in conversation_history[user_id])
+    #print(length)
+
     await message.answer(f"{chat_gpt_response}")
 

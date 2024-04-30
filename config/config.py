@@ -21,12 +21,9 @@ class Settings:
     TORTOISE_CONFIG: dict = {
     "connections": {"default": DB_URL},
     "apps": {
-            #"clients":{
-            #    "models": ["clients.models"],
-            #},
-            #"projects" :{
-            #    "models": ["projects.models"],
-            #},
+            "gpt_history" :{
+                "models": ["models.gpt_models"],
+            },
             "models": {
                 "models": ["aerich.models"],
                 "default_connection": "default",
