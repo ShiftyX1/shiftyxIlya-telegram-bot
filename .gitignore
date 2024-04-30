@@ -1,0 +1,7 @@
+/venv
+.env
+__pycache__
+keys.txt
+/migrations
+pyproject.toml
+files/history_gpt/*
