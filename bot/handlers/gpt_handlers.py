@@ -1,8 +1,13 @@
 from aiogram import Router, F
-from aiogram.filters import Command
-from aiogram.types import Message, ContentType
+from aiogram.filters import Command, StateFilter
+from aiogram.types import Message, ContentType, CallbackQuery
+from aiogram.fsm.context import FSMContext
+
 from models.gpt_models import History
+
 from tortoise.exceptions import DoesNotExist
+
+from bot.states.states import GPTChat, DefaultStates
 
 import g4f
 import g4f.Provider
@@ -11,7 +16,12 @@ import json
 
 
 gpt_router = Router()
-gpt_answers_if_not_text = ["Упс! По всей видимости вы отправили картинку/гифку/стикер/документ и т.д, к сожалению, на данном этапе разработки я умею обрабатывать только текст, но в скором времени это планируется исправить!"]
+gpt_answers_if_not_text = [
+    "",
+    "Упс! По всей видимости вы отправили картинку/гифку/стикер/документ и т.д, к сожалению, на данном этапе разработки я умею обрабатывать только текст, но в скором времени это планируется исправить!",
+    "К сожалению, пока что я не умею обрабатывать ничего кроме текста :( Но я верю, что в будущем удастся это исправить",
+    "除了文字，我什么都不认得 , вам понятны слова выше? Нет? Вот и я не понимаю ничего кроме текста, пожалуйста, отправьте корректный промпт!"
+    ]
 
 
 def history_to_json(history_dict: dict) -> str:
@@ -29,6 +39,18 @@ def trim_history(history, max_length=4096):
     return history
 
 
+@gpt_router.business_message(StateFilter(DefaultStates.waiting_for_command), Command('gpt_start'))
+async def start_gpt_chat(message: Message, state: FSMContext):
+    await message.answer(text="Можете общаться с ChatGPT!")
+    await state.set_state(GPTChat.chat_with_gpt)
+
+
+@gpt_router.business_message(StateFilter(GPTChat.chat_with_gpt), Command('cancel_chat'))
+async def cancel_gpt_chat(message: Message, state: FSMContext):
+    await state.set_state(None)
+    await message.answer(text="Чат с ChatGPT остановлен")
+
+
 @gpt_router.business_message(Command('clear'))
 async def process_clear_command(message: Message):
     user_id = message.from_user.id
@@ -36,7 +58,7 @@ async def process_clear_command(message: Message):
         history = await History.get(user_id=user_id)
         
         if history.historyjson == []:
-            await message.reply("По всей видимости ранее вы уже очищали историю диалога, очистка не требуется")
+            await message.reply("Ранее вы уже очищали историю диалога, очистка не требуется")
             return None
         
         history.historyjson = history_to_json([])
@@ -46,7 +68,7 @@ async def process_clear_command(message: Message):
         await message.reply("Вы еще не общались с ChatGPT в рамках этого чата. История отсутствует.")
 
 # Обработчик для каждого нового сообщения к GPT
-@gpt_router.business_message()
+@gpt_router.business_message(StateFilter(GPTChat.chat_with_gpt))
 async def gpt_response(message: Message):
     if message.content_type == ContentType.TEXT:
         user_id = message.from_user.id
@@ -61,9 +83,6 @@ async def gpt_response(message: Message):
         conversation_history = await History.get(user_id=str(user_id))
         chat_history = conversation_history.historyjson
         chat_history.append({"role": "user", "content": user_input})
-
-        # conversation_history[user_id] = trim_history(conversation_history[user_id])
-        #chat_history = conversation_history[user_id]
 
         providers = [g4f.Provider.Feedough]
 
@@ -82,11 +101,7 @@ async def gpt_response(message: Message):
         conversation_history.historyjson = json.dumps(chat_history)
         await conversation_history.save()
 
-        #print(conversation_history.historyjson.encode(encoding="utf-8"))
-        #length = sum(len(message["content"]) for message in conversation_history[user_id])
-        #print(length)
-
         await message.answer(f"{chat_gpt_response}")
     else:
-        await message.answer(gpt_answers_if_not_text[0])
+        await message.answer(gpt_answers_if_not_text[random.randint(1, 3)])
 

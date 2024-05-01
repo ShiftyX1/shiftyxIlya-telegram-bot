@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher
 
 from bot.handlers.gpt_handlers import gpt_router
 from bot.handlers.admin_handlers import admin_router
+from bot.handlers.default_handlers import default_router
 
 from database.database_connection import connect_database
 
@@ -19,6 +20,7 @@ dp = Dispatcher()
 
 dp.include_router(gpt_router)
 dp.include_router(admin_router)
+dp.include_router(default_router)
 
 # Запуск бота
 async def main():
