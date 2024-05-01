@@ -17,7 +17,7 @@ default_router = Router()
 @default_router.business_message(StateFilter(None))
 async def empty_chat(message: Message, state: FSMContext):
     await message.answer(
-        text="Привет, я ассистент Shifty! Если вы хотите пообщатся с ChatGPT напишите /gpt_start , если моя помощь не нужна, нажмите 'Помощь не нужна'"
+        text="Привет, я ассистент Shifty! Если вы хотите пообщатся с ChatGPT напишите /gpt_start , если моя помощь не нужна, напишите /cancel . Вы можете обратится за моей помощью в любой момент!"
         )
     await state.set_state(DefaultStates.waiting_for_command)
     
