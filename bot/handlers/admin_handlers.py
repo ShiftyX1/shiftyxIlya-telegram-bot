@@ -2,7 +2,10 @@ from aiogram import Router, F
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, InlineQuery, InlineQueryResultArticle, InputTextMessageContent
 from aiogram.types.input_file import FSInputFile
+from aiogram.enums import ParseMode
+
 from models.gpt_models import History
+
 from tortoise.exceptions import DoesNotExist
 
 from config.config import settings
@@ -22,6 +25,9 @@ async def check_history(message: Message, command: CommandObject):
         return None
     
     user_id: str = command.args
+    if user_id == None:
+        await message.reply(text="После ввода команды необходимо добавить ID пользоватля. <b>/get_history {id}</b>", parse_mode=ParseMode.HTML)
+        return None
 
     try:
         gpt_history = await History.get(user_id=user_id)
@@ -47,7 +53,9 @@ async def random_paste(message: Message):
 
 # TODO: НИЖЕ СДЕЛАН ХЕНДЛЕР ИНЛАЙН РЕЖИМА,
 # НУЖНО БУДЕТ С НИМ РАЗОБРАТЬСЯ И ПОДУМАТЬ
-# ЧЕМ ОН МОЖЕТ БЫТЬ ПОЛЕЗЕН, пока работает не совсем корректно, по факту я просто спиздил чужой код)) толком с этим функционалом не разбирался((
+# ЧЕМ ОН МОЖЕТ БЫТЬ ПОЛЕЗЕН, 
+# пока работает не совсем корректно, по факту я просто спиздил чужой код)) 
+# толком с этим функционалом не разбирался((
 # -------------------------------------------------
 @admin_router.inline_query(F.query == 'pasta')
 async def inline_pasta(inline_query: InlineQuery):

@@ -12,6 +12,7 @@ async def random_copypasta() -> str:
         x = True
         while x == True:
             async with session.get(f'https://copypastas.ru/copypasta/{random.randint(1, 10000)}/') as response:
+                
                 if response.status != 200:
                     continue
 
